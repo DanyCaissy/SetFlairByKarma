@@ -1,0 +1,4 @@
+*.db
+*.out
+*.log
+setflairbykarma/credentials.py
