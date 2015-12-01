@@ -66,12 +66,10 @@ def set_flair_for_user_subreddit(username, subreddit, comment=None):
     All main operations required to set the flair of a user in a specific subreddit
     """
 
-    logging.info('Setting flair for user:' + username)
-
     try:
         user = reddit_instance.get_redditor(username, fetch=True)
     except Exception as e:
-        logging.debug('User is not found anymore')
+        logging.debug('User is not found anymore:' + username)
         logging.exception(e)
 
     # Here we calculate the karma for this specific user depending on the configuration that was defined
@@ -85,17 +83,66 @@ def set_flair_for_user_subreddit(username, subreddit, comment=None):
     flair_css_class = redditor_current_flair['flair_css_class']
     flair_text = redditor_current_flair['flair_text']
 
+    # Will serve to figure out if the new flair is really different from the old, if not, nothing will be done
+    flair_has_changed = False
+
     if ASSIGN_FLAIR_TEXT:
-        flair_text = flair_info['flair_text']
+
+        if flair_text != flair_info['flair_text']:
+
+            flair_text = flair_info['flair_text']
+            flair_has_changed = True
 
     if ASSIGN_FLAIR_CSS_CLASS:
-        flair_css_class = flair_info['flair_css_class']
 
-    subreddit.set_flair(username, flair_css_class=flair_css_class, flair_text=flair_text)
+        if flair_css_class != flair_info['flair_css_class']:
 
-    if comment is not None and CONFIRMATION_COMMENT:
-        comment.reply (CONFIRMATION_COMMENT_TEXT.format(total_karma))
+            flair_css_class = flair_info['flair_css_class']
+            flair_has_changed = True
 
+    if flair_has_changed:  # Only if the flair is different from before
+
+        logging.info('Setting flair for user:' + username)
+        subreddit.set_flair(username, flair_css_class=flair_css_class, flair_text=flair_text)
+
+        if comment is not None and CONFIRMATION_COMMENT:
+            comment.reply (CONFIRMATION_COMMENT_TEXT.format(total_karma))
+
+    else:
+        logging.info('Flair was already set for user:' + username)
+
+def loop_through_comments(comments, newest_timestamp_so_far):
+
+    """
+    Loop through comments until we reach a comment too old to be added, then stop.
+    """
+
+    for comment in comments:
+
+        # This should never happen in theory, but if it does (for example if the thread got spammed) we exit
+        if isinstance(comment, praw.objects.MoreComments):
+            break
+
+        if hasattr(comment.author, 'name'):
+            author_name = comment.author.name
+        else:  # There is no author name, this means the comment was deleted
+            continue
+
+        comment_timestamp = int(comment.created_utc)
+
+        if comment_timestamp > newest_timestamp_so_far:
+            newest_timestamp_so_far = comment_timestamp
+
+        if comment_timestamp > saved_timestamp:  # Only if we didn't already process this post
+
+            try:
+                set_flair_for_user_subreddit(author_name, subreddit, comment)
+            except Exception as e:
+                logging.exception(e)
+        else:
+            break  # Comments are ordered by new, once we find an older comment, the next ones will also be too old
+
+    return newest_timestamp_so_far
 
 if __name__ == '__main__':
 
@@ -126,36 +173,21 @@ if __name__ == '__main__':
     print (i.isoformat() + ' - Timestamp:' + str(saved_timestamp))
     logging.info('Timestamp:' + str(saved_timestamp))
 
-    newest_timestamp = saved_timestamp
-
     '''LOGIC'''
     subreddit = reddit_instance.get_subreddit(SUBREDDIT_NAME)
 
     submission = reddit_instance.get_submission(submission_id=SUBMISSION_ID, comment_sort='new')
 
-    submission.replace_more_comments(limit=None, threshold=0)
+    # Realistically we only need the "more" comments the first time the script is ran on the thread
+    # since we don't need to read comments that have already been processed before
+    if saved_timestamp == 0:
+        logging.info('First run, we will load ALL comments from this thread.')
+        submission.replace_more_comments(limit=None, threshold=0)
+
     all_comments = submission.comments
 
-    for comment in all_comments:
-
-        if hasattr(comment.author, 'name'):
-            author_name = comment.author.name
-        else:  # There is no author name, this means the comment was deleted
-            continue
-
-        comment_timestamp = int(comment.created)
-
-        if comment_timestamp > newest_timestamp:  # Save the newest timestamp which will be saved into the database
-            newest_timestamp = comment_timestamp
-
-        if comment_timestamp > saved_timestamp:  # Only if we didn't already process this post
-
-            try:
-                set_flair_for_user_subreddit(author_name, subreddit, comment)
-            except Exception as e:
-                logging.exception(e)
-        else:
-            break  # Comments are ordered by new, once we find an older comment, the next ones will also be too old
+    # Here we loop through all the comments until we reach comments which have already been processed
+    newest_timestamp = loop_through_comments(all_comments, saved_timestamp)
 
     '''UPDATE WITH LATEST TIMESTAMP'''
     # This avoids reading the same comments again in the future

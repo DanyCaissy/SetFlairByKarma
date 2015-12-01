@@ -27,7 +27,9 @@ def get_comment_karma_for_user(subreddit, user):
     user_comments = user.get_comments(sort='top', limit=None)
     for comment in user_comments:
 
-        if str(comment.subreddit) == subreddit:
+        subreddit_name = comment.subreddit.display_name
+
+        if subreddit_name == subreddit:
             karma += comment.score
 
     return karma
