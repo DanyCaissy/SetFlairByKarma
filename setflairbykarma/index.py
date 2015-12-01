@@ -1,16 +1,13 @@
 # By Dany Caissy
-# https://github.com/DanyCaissy/
+# https://github.com/DanyCaissy/Reddit/
 
+import praw
+import credentials  # Contains my personal credentials, you don't need to include this
+import karma_for_user # Calculates karma of a user within a specific subreddit
 import logging # To log errors or otherwise
 import collections # Ordered dictionary
 import sqlite3
 import datetime
-
-import praw
-
-import credentials  # Contains my personal credentials, you don't need to include this
-import karma_for_user # Calculates karma of a user within a specific subreddit
-
 
 '''USER CONFIGURATION'''
 
@@ -72,9 +69,9 @@ def set_flair_for_user_subreddit(username, subreddit, comment=None):
     logging.info('Setting flair for user:' + username)
 
     try:
-        user = reddit_instance.get_redditor(username)
+        user = reddit_instance.get_redditor(username, fetch=True)
     except Exception as e:
-        logging.debug('User is not found anymore:')
+        logging.debug('User is not found anymore')
         logging.exception(e)
 
     # Here we calculate the karma for this specific user depending on the configuration that was defined
@@ -134,14 +131,18 @@ if __name__ == '__main__':
     '''LOGIC'''
     subreddit = reddit_instance.get_subreddit(SUBREDDIT_NAME)
 
-    submission = reddit_instance.get_submission(submission_id=SUBMISSION_ID)
+    submission = reddit_instance.get_submission(submission_id=SUBMISSION_ID, comment_sort='new')
 
     submission.replace_more_comments(limit=None, threshold=0)
     all_comments = submission.comments
 
     for comment in all_comments:
 
-        author_name = str(comment.author)
+        if hasattr(comment.author, 'name'):
+            author_name = comment.author.name
+        else:  # There is no author name, this means the comment was deleted
+            continue
+
         comment_timestamp = int(comment.created)
 
         if comment_timestamp > newest_timestamp:  # Save the newest timestamp which will be saved into the database
@@ -153,6 +154,8 @@ if __name__ == '__main__':
                 set_flair_for_user_subreddit(author_name, subreddit, comment)
             except Exception as e:
                 logging.exception(e)
+        else:
+            break  # Comments are ordered by new, once we find an older comment, the next ones will also be too old
 
     '''UPDATE WITH LATEST TIMESTAMP'''
     # This avoids reading the same comments again in the future

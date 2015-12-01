@@ -2,3 +2,4 @@
 *.out
 *.log
 setflairbykarma/credentials.py
+*.pyc
