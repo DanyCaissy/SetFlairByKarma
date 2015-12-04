@@ -153,7 +153,7 @@ if __name__ == '__main__':
     '''AUTHENTICATION'''
     # Set these to your own credentials
     reddit_instance = praw.Reddit(credentials.user_agent)
-    reddit_instance.set_oauth_app_info(credentials.app_id, credentials.app_secret, credentials.app_refresh)
+    reddit_instance.set_oauth_app_info(credentials.app_id, credentials.app_secret, credentials.app_uri)
     reddit_instance.refresh_access_information(credentials.app_refresh)
 
     '''OPENING DATABASE'''
