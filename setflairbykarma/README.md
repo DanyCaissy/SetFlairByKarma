@@ -14,7 +14,7 @@ You can run the bot as often as you wish, I run it every 30 minutes, it works th
 
 3- [Optional] Your bot can reply to the user to let them know their flair has been set.
 
-4- Save the date of the last comment that was processed in a sqlite database to ensure we don't ever process the same comment twice
+4- Saves the date of the last comment that was processed in a sqlite database to ensure we don't ever process the same comment twice
 
 
 _______
@@ -26,4 +26,6 @@ _______
 
 3- On your server, you will need Python installed as well as [praw](http://praw.readthedocs.org/en/stable/index.html#installation).
 
-4- Use a scheduler (such as CRON) to run the script periodically
+4- Once the bot is ready, create a thread asking your users to post if they want their flair to be set-up, the bot will assign their flair the next time it is ran.
+
+5- Use a scheduler (such as CRON) to run the script periodically.
