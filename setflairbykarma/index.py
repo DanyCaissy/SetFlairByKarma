@@ -109,6 +109,10 @@ def set_flair_for_user_subreddit(username, subreddit, comment=None):
             comment.reply (CONFIRMATION_COMMENT_TEXT.format(total_karma))
 
     else:
+        
+        if comment is not None and CONFIRMATION_COMMENT:
+            comment.reply (CONFIRMATION_ALREADY_SET_TEXT.format(total_karma))
+      
         logging.info('Flair was already set for user:' + username)
 
 def loop_through_comments(comments, newest_timestamp_so_far):
