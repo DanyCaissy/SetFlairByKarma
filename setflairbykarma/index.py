@@ -122,6 +122,10 @@ def loop_through_comments(comments, newest_timestamp_so_far):
         # This should never happen in theory, but if it does (for example if the thread got spammed) we exit
         if isinstance(comment, praw.objects.MoreComments):
             break
+            
+        # The first comment might not be the newest if it is a stickied comment, ignore this one
+        if comment.stickied:
+            continue
 
         if hasattr(comment.author, 'name'):
             author_name = comment.author.name
