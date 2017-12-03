@@ -8,12 +8,14 @@ import logging # To log errors or otherwise
 import collections # Ordered dictionary
 import sqlite3
 import datetime
+import sys
 
 '''USER CONFIGURATION'''
 
 # This configuration is based on this submission: https://www.reddit.com/r/cscareerquestions/comments/3qg1ns/
 SUBREDDIT_NAME = 'cscareerquestions' # Subreddit in which you want to assign flairs
-SUBMISSION_ID = '3qg1ns' # Submission that will be monitored, flair will only be set on people with top-level comments
+SUBMISSION_ID = '71fh9j' # Submission that will be monitored, flair will only be set on people with top-level comments
+# Previous submission ID:5z5hw5
 
 # This is the flair (text and/or css) assigned to a user if they reach X Karma
 # EX: A user with 1500 karma would be assigned the css flair "over-1000-karma"
@@ -34,6 +36,7 @@ ASSIGN_FLAIR_CSS_CLASS = True
 # When flair is assigned, decide if you want a confirmation comment and if so, what it should say
 CONFIRMATION_COMMENT = True
 CONFIRMATION_COMMENT_TEXT = 'Your flair has been assigned! Your calculated karma was {0}.'
+CONFIRMATION_ALREADY_SET_TEXT = 'Your flair is already what it should be! Your calculated karma is {0}.'
 
 # Which types of karma you want to include, obviously if both are set to False, karma will always be 0
 INCLUDE_SUBMISSION_KARMA = True
@@ -67,7 +70,7 @@ def set_flair_for_user_subreddit(username, subreddit, comment=None):
     """
 
     try:
-        user = reddit_instance.get_redditor(username, fetch=True)
+        user = reddit_instance.redditor(username)
     except Exception as e:
         logging.debug('User is not found anymore:' + username)
         logging.exception(e)
@@ -79,40 +82,27 @@ def set_flair_for_user_subreddit(username, subreddit, comment=None):
     flair_info = get_flair_info_for_karma(total_karma)
     logging.info(flair_info)
 
-    redditor_current_flair = subreddit.get_flair(user)
-    flair_css_class = redditor_current_flair['flair_css_class']
-    flair_text = redditor_current_flair['flair_text']
-
     # Will serve to figure out if the new flair is really different from the old, if not, nothing will be done
     flair_has_changed = False
 
-    if ASSIGN_FLAIR_TEXT:
-
-        if flair_text != flair_info['flair_text']:
-
-            flair_text = flair_info['flair_text']
-            flair_has_changed = True
-
     if ASSIGN_FLAIR_CSS_CLASS:
 
-        if flair_css_class != flair_info['flair_css_class']:
-
-            flair_css_class = flair_info['flair_css_class']
-            flair_has_changed = True
+        flair_css_class = flair_info['flair_css_class']
+        flair_has_changed = True
 
     if flair_has_changed:  # Only if the flair is different from before
 
         logging.info('Setting flair for user:' + username)
-        subreddit.set_flair(username, flair_css_class=flair_css_class, flair_text=flair_text)
+        subreddit.flair.set(username, css_class=flair_css_class)
 
         if comment is not None and CONFIRMATION_COMMENT:
             comment.reply (CONFIRMATION_COMMENT_TEXT.format(total_karma))
 
     else:
-        
+
         if comment is not None and CONFIRMATION_COMMENT:
             comment.reply (CONFIRMATION_ALREADY_SET_TEXT.format(total_karma))
-      
+
         logging.info('Flair was already set for user:' + username)
 
 def loop_through_comments(comments, newest_timestamp_so_far):
@@ -121,20 +111,24 @@ def loop_through_comments(comments, newest_timestamp_so_far):
     Loop through comments until we reach a comment too old to be added, then stop.
     """
 
+    logging.info('loop-through-comments')
+
     for comment in comments:
 
-        # This should never happen in theory, but if it does (for example if the thread got spammed) we exit
-        if isinstance(comment, praw.objects.MoreComments):
-            break
-            
+        logging.info('comment')
+
         # The first comment might not be the newest if it is a stickied comment, ignore this one
         if comment.stickied:
             continue
+
+        logging.info('before-author')
 
         if hasattr(comment.author, 'name'):
             author_name = comment.author.name
         else:  # There is no author name, this means the comment was deleted
             continue
+
+        logging.info('Processing comment for: ' + str(author_name))
 
         comment_timestamp = int(comment.created_utc)
 
@@ -160,9 +154,14 @@ if __name__ == '__main__':
 
     '''AUTHENTICATION'''
     # Set these to your own credentials
-    reddit_instance = praw.Reddit(credentials.user_agent)
-    reddit_instance.set_oauth_app_info(credentials.app_id, credentials.app_secret, credentials.app_uri)
-    reddit_instance.refresh_access_information(credentials.app_refresh)
+    #reddit_instance = praw.Reddit(credentials.user_agent)
+
+    reddit_instance = praw.Reddit(client_id=credentials.app_id,
+                                           client_secret=credentials.app_secret,
+                                           redirect_uri=credentials.app_uri,
+                                           user_agent=credentials.user_agent)
+
+    #reddit_instance.refresh_access_information(credentials.app_refresh)
 
     '''OPENING DATABASE'''
     sql = sqlite3.connect('sql.db')
@@ -182,17 +181,13 @@ if __name__ == '__main__':
     logging.info('Timestamp:' + str(saved_timestamp))
 
     '''LOGIC'''
-    subreddit = reddit_instance.get_subreddit(SUBREDDIT_NAME)
+    subreddit = reddit_instance.subreddit(SUBREDDIT_NAME)
 
-    submission = reddit_instance.get_submission(submission_id=SUBMISSION_ID, comment_sort='new')
+    submission = reddit_instance.submission(id=SUBMISSION_ID)
+    submission.comment_sort = 'new'
 
-    # Realistically we only need the "more" comments the first time the script is ran on the thread
-    # since we don't need to read comments that have already been processed before
-    if saved_timestamp == 0:
-        logging.info('First run, we will load ALL comments from this thread.')
-        submission.replace_more_comments(limit=None, threshold=0)
-
-    all_comments = submission.comments
+    submission.comments.replace_more(limit=0)
+    all_comments = submission.comments.list()
 
     # Here we loop through all the comments until we reach comments which have already been processed
     newest_timestamp = loop_through_comments(all_comments, saved_timestamp)
