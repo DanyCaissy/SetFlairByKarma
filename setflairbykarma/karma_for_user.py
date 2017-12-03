@@ -6,7 +6,7 @@ def get_submission_karma_for_user(subreddit, user):
     """
 
     karma = 0
-    submitted_posts = user.get_submitted(limit=None)
+    submitted_posts = user.submissions.top('all')
     for post in submitted_posts:
 
         subreddit_name = post.subreddit.display_name
@@ -24,7 +24,7 @@ def get_comment_karma_for_user(subreddit, user):
     """
 
     karma = 0
-    user_comments = user.get_comments(sort='top', limit=None)
+    user_comments = user.comments.top('all')
     for comment in user_comments:
 
         subreddit_name = comment.subreddit.display_name
