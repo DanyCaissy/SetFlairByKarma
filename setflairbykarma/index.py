@@ -82,18 +82,30 @@ def set_flair_for_user_subreddit(username, subreddit, comment=None):
     flair_info = get_flair_info_for_karma(total_karma)
     logging.info(flair_info)
 
+    redditor_current_flair = next(subreddit.flair(redditor=username))
+    flair_css_class = redditor_current_flair['flair_css_class']
+    flair_text = redditor_current_flair['flair_text']
+
     # Will serve to figure out if the new flair is really different from the old, if not, nothing will be done
     flair_has_changed = False
 
+    if ASSIGN_FLAIR_TEXT:
+
+        if flair_text != flair_info['flair_text']:
+
+            flair_text = flair_info['flair_text']
+            flair_has_changed = True
+
     if ASSIGN_FLAIR_CSS_CLASS:
 
-        flair_css_class = flair_info['flair_css_class']
-        flair_has_changed = True
+        if flair_css_class != flair_info['flair_css_class']:
+            flair_css_class = flair_info['flair_css_class']
+            flair_has_changed = True
 
     if flair_has_changed:  # Only if the flair is different from before
 
         logging.info('Setting flair for user:' + username)
-        subreddit.flair.set(username, css_class=flair_css_class)
+        subreddit.flair.set(username, css_class=flair_css_class, text=flair_text)
 
         if comment is not None and CONFIRMATION_COMMENT:
             comment.reply (CONFIRMATION_COMMENT_TEXT.format(total_karma))
@@ -159,9 +171,9 @@ if __name__ == '__main__':
     reddit_instance = praw.Reddit(client_id=credentials.app_id,
                                            client_secret=credentials.app_secret,
                                            redirect_uri=credentials.app_uri,
-                                           user_agent=credentials.user_agent)
+                                           user_agent=credentials.user_agent,
+                                           refresh_token=credentials.app_refresh)
 
-    #reddit_instance.refresh_access_information(credentials.app_refresh)
 
     '''OPENING DATABASE'''
     sql = sqlite3.connect('sql.db')
