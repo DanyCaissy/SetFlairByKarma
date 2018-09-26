@@ -1,4 +1,4 @@
-SetFlairByKarma
+SetFlairByKarma (deprecated)
 ======
 
 EDIT: Now deprecated due to changes in the PRAW API Wrapper
