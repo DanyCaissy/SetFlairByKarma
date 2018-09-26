@@ -1,10 +1,12 @@
 SetFlairByKarma
 ======
 
+EDIT: Now deprecated due to changes in the PRAW API Wrapper
+
 This bot allows you to assign flair to users in your subreddit based on their karma. You can assign both their flair_text and their flair_css.
 _______
 
-###How does it work?
+### How does it work?
 
 You can run the bot as often as you wish, I run it every 30 minutes, it works the following way:
 
@@ -18,7 +20,7 @@ You can run the bot as often as you wish, I run it every 30 minutes, it works th
 
 
 _______
-###Requirements
+### Requirements
 
 1- Be a moderator of a subreddit with permission to modify user flair.
 
