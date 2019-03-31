@@ -1,7 +1,7 @@
-SetFlairByKarma (deprecated)
+SetFlairByKarma
 ======
 
-EDIT: Now deprecated due to changes in the PRAW API Wrapper
+EDIT: Now deprecated due to changes in the PRAW API Wrapper. A new version is maintained by SofaAssassin: https://github.com/sofaworks/cscqflairbot
 
 This bot allows you to assign flair to users in your subreddit based on their karma. You can assign both their flair_text and their flair_css.
 _______
